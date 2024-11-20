@@ -37,7 +37,7 @@ ALLOWED_HOSTS = [] # This allows all hosts to access the application, which can 
 ### (Uncomment below for safe code) ###
 
 #DEBUG = False
-#ALLOWED_HOSTS = ['localhost']
+#ALLOWED_HOSTS = ['localhost','127.0.0.1']
 
 ##############################################################################################################################################
 
