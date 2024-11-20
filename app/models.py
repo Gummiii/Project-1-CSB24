@@ -55,7 +55,7 @@ class User(AbstractBaseUser):
 
 class InsecureUser(models.Model):
     username = models.CharField(max_length=100, unique=True)
-    email = models.EmailField()
+    email = models.EmailField(unique=True)
     password = models.CharField(max_length=100) # Especially this line, the password should be atleast hashed.
 
 

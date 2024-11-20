@@ -3,6 +3,8 @@ from django.db import connection
 from django.http import HttpResponse
 from app.models import User
 from django.contrib.auth.decorators import login_required
+from app.models import InsecureUser
+
 def index(request):
     return render(request, 'index.html')   # This is the default homepage view
 
@@ -82,7 +84,21 @@ def secure_view_user_data(request, user_id):
         return HttpResponse("User not found.")
 
 
+# A02:2021 Cryptographic Failures: The application uses weak or insecure cryptographic algorithms to protect sensitive data.
 
+def register_insecure_user(request):
+    username = request.GET.get('username', '')
+    email = request.GET.get('email', '')
+    password = request.GET.get('password', '')
+
+    if not (username and email and password):
+        return HttpResponse("Missing required fields", status=400)
+    
+    user = InsecureUser.objects.create(username=username, email=email, password=password)  # This is where the cryptographic failure occurs
+    return HttpResponse(f"User {user.username} registered with plaintext password {user.password}")
+
+
+            ### SOLUTION ###
 
 
 # A10:2021 Server-Side Request Forgery (SSRF): The application allows attackers to make arbitrary requests on behalf of the server, potentially exposing internal services to the internet.
