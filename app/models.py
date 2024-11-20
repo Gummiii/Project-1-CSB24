@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
+from django.contrib.auth.hashers import make_password, check_password
+
 
 class UserManager(BaseUserManager):
     def create_user(self, username, email, password=None):
@@ -61,15 +63,15 @@ class InsecureUser(models.Model):
 
 
             ### SOLUTION ###
-### (Uncomment below for safe code) ###
 
-# from django.contrib.auth.hashers import make_password, check_password
-# class User(models.Model):
-#    username = models.CharField(max_length=100)
-#    password = models.CharField(max_length=100)
+class SecureUser(models.Model):
+    username = models.CharField(max_length=100, unique=True)
+    email = models.EmailField(unique=True)
+    password = models.CharField(max_length=128)  # Increased length for hashed passwords
 
-#    def set_password(self, raw_password):
-#        self.password = make_password(raw_password)
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
 
-#    def check_password(self, raw_password):
-#        return check_password(raw_password, self.password)
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
+

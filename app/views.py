@@ -4,6 +4,9 @@ from django.http import HttpResponse
 from app.models import User
 from django.contrib.auth.decorators import login_required
 from app.models import InsecureUser
+from app.models import SecureUser
+from django.http import JsonResponse
+
 
 def index(request):
     return render(request, 'index.html')   # This is the default homepage view
@@ -27,7 +30,7 @@ def vulnerable_sql(request):
     print(f"Query result: {user}")
     print(f"Try change the URL to /vulnerable_sql?username=testuser' OR '1'='1 for the SQL Injection")
     if user:
-        return HttpResponse(f"User: {user},<br>Correct User should be testuser, test@example.com, password123<br>Now try change the URL to /vulnerable_sql?username=testuser' OR '1'='1")
+        return HttpResponse(f"User: {username}, {user},<br>Correct User should be testuser, test@example.com, password123<br>Now try change the URL to /vulnerable_sql?username=testuser' OR '1'='1")
 
     else:
         return HttpResponse("User not found")
@@ -98,7 +101,34 @@ def register_insecure_user(request):
     return HttpResponse(f"User {user.username} registered with plaintext password {user.password}")
 
 
-            ### SOLUTION ###
+def register_secure_user(request):
+    username = request.GET.get('username', '')
+    email = request.GET.get('email', '')
+    password = request.GET.get('password', '')
+
+    if not (username and email and password):
+        return HttpResponse("Missing required fields", status=400)
+    user = SecureUser(username=username, email=email)
+    user.set_password(password)
+    user.save()
+
+    return HttpResponse(f"User {user.username} registered securely!")  
+
+def view_passwords(request):
+    insecure_users = InsecureUser.objects.all()
+    secure_users = SecureUser.objects.all()
+
+    data = {
+        "insecure_users": [
+            {"username": user.username, "password": user.password,} for user in insecure_users
+        ],
+        "secure_users": [
+            {"username": user.username, "password": user.password} for user in secure_users
+        ]
+    }
+    return JsonResponse(data)
+
+
 
 
 # A10:2021 Server-Side Request Forgery (SSRF): The application allows attackers to make arbitrary requests on behalf of the server, potentially exposing internal services to the internet.
@@ -114,14 +144,56 @@ def fetch_url(request):
 
 
             ### SOLUTION ###
-### (Uncomment below for safe code) ###
 
 
-# from urllib.parse import urlparse
-# def secure_fetch_url(request):
-#     url = request.GET.get('url', '')
-#     parsed_url = urlparse(url)
-#     if parsed_url.scheme not in ['http', 'https']:
-#         return HttpResponse("Invalid URL", status=400)
-#     response = requests.get(url)
-#     return HttpResponse(response.text)
+
+from urllib.parse import urlparse
+from ipaddress import ip_address, ip_network
+
+
+
+def secure_fetch_url(request):
+    url = request.GET.get('url', '')
+    if not url:
+        return HttpResponse("No URL provided", status=400)
+
+    try:
+        # Parse the URL
+        parsed_url = urlparse(url)
+
+        # Validate scheme
+        if parsed_url.scheme not in ['http', 'https']:
+            return HttpResponse("Invalid URL scheme", status=400)
+
+        # Resolve the hostname to an IP address
+        import socket
+        resolved_ip = socket.gethostbyname(parsed_url.hostname)
+
+        # Define private IP ranges
+        private_ip_ranges = [
+            ip_network('127.0.0.0/8'),  # Loopback
+            ip_network('10.0.0.0/8'),  # Private network
+            ip_network('172.16.0.0/12'),  # Private network
+            ip_network('192.168.0.0/16'),  # Private network
+            ip_network('169.254.0.0/16'),  # Link-local
+        ]
+
+        # Check if the resolved IP belongs to a private range
+        ip_obj = ip_address(resolved_ip)
+        if any(ip_obj in net for net in private_ip_ranges):
+            return HttpResponse("Access to private IP ranges is not allowed", status=403)
+
+        # Fetch the URL content if validation passes
+        response = requests.get(url, timeout=5)  # Add a timeout to prevent hanging
+        return HttpResponse(response.text)
+
+    except socket.gaierror:
+        return HttpResponse("Invalid hostname", status=400)
+
+    except requests.exceptions.RequestException as e:
+        return HttpResponse(f"Error fetching the URL: {str(e)}", status=500)
+
+    except Exception as e:
+        return HttpResponse(f"Unexpected error: {str(e)}", status=500)
+
+

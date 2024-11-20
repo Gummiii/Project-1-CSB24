@@ -27,5 +27,8 @@ urlpatterns = [
     path('view_user_data/<int:user_id>', views.view_user_data, name='view_user_data'),
     path('secure_view_user_data/<int:user_id>', views.secure_view_user_data, name='secure_view_user_data'),
     path('fetch_url', views.fetch_url, name='fetch_url'),
+    path('secure_fetch_url/', views.secure_fetch_url, name='secure_fetch_url'),
     path('register_insecure/', views.register_insecure_user, name='register_insecure_user'),
+    path('register_secure/', views.register_secure_user, name='register_secure'),
+    path('view_passwords/', views.view_passwords, name='view_passwords'),
 ]
